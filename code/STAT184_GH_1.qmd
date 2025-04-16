@@ -1,5 +1,6 @@
 ---
 title: "STAT184_GH_1"
+author: "Ethan Martin"
 format: html
 editor: visual
 ---
