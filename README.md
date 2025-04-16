@@ -9,4 +9,4 @@
  ![](image.png)
 
 # Contact
- Please send any inquiries to [jlw7204@psu.edu](mailto:jlw7204@psu.edu). Thank you for your time!
+ Please send any inquiries to [evm5766@psu.edu](mailto:evm5766@psu.edu). Thank you for your time!
