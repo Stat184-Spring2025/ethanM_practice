@@ -1,0 +1,192 @@
+```{yaml}
+---
+title: "Stat 184 Activity 10"
+author: "Ethan Martin"
+date: "4/18/2024"
+date-modified: now
+format:
+  pdf:
+    toc: FALSE
+    number-sections: true
+    number-depth: 5
+    fig-align: center
+    cap-location: top
+    geometry:
+      - top = 1in
+      - left = 1in
+      - right = 1in
+      - bottom = 1in
+    colorlinks: TRUE
+execute:
+  echo: false
+  warning: false
+---
+```
+```{r}
+# Packages ----
+# install.packages(tidyverse)
+# install.packages(rvest)
+# install.packages(googlesheets4)
+library(tidyverse)
+library(rvest)
+library(googlesheets4)
+library(tinytex)
+library(dcData)
+library(ggplot2)
+```
+
+
+# Armed Forces Data Wrangling Redux
+
+```{r}
+#| label: tbl-armedForcesIndividuals
+#| fig-cap: "Armed Forces -- Individual"
+#| fig-pos: "H"
+#| fig-width: 5
+# Wrangle Armed Forces data so each case is an induvidual soldier with rank names
+
+# Scrape Rank Data ----
+dataRanks <- read_html("https://neilhatfield.github.io/Stat184_PayGradeRanks.html") %>%
+  html_elements(css = "table") %>%
+  html_table()
+
+dataRanksRaw <-  dataRanks[[1]]
+
+# Wrangle Rank Data ----
+dataRanksRaw[1, 1] <- "Type"
+rankHeaders <- dataRanksRaw[1,] # Column headers
+names(dataRanksRaw) <- rankHeaders[1,] # Fix column names
+dataRanksRaw <- dataRanksRaw[-c(1, 26),] # Remove first and last rows (redundant)
+
+tidyRanks <- dataRanksRaw %>%
+  dplyr::select(!Type) %>%
+  pivot_longer(
+    cols = !`Pay Grade`,
+    names_to = "Branch",
+    values_to = "Rank"
+  ) %>%
+  mutate(
+    Rank = na_if(x = Rank, y = "--")
+  )
+
+# Scrape Armed Forces Data ----
+gs4_deauth()
+armedForcesHeaders <- read_sheet(
+  ss = "https://docs.google.com/spreadsheets/d/1cn4i0-ymB1ZytWXCwsJiq6fZ9PhGLUvbMBHlzqG4bwo/edit?usp=sharing",
+  col_names = FALSE,
+  n_max = 3
+)
+
+rawArmedForces <- read_sheet(
+  ss = "https://docs.google.com/spreadsheets/d/1cn4i0-ymB1ZytWXCwsJiq6fZ9PhGLUvbMBHlzqG4bwo/edit?usp=sharing",
+  col_names = FALSE,
+  skip = 3,
+  n_max = 28,
+  col_types = "c"
+)
+
+# Wrangle Armed Forces Data ----
+branches <- rep(
+  x = c("Army", "Navy", "Marine Corps", "Air Force", "Space Force", "Total"),
+  each = 3
+)
+headers <- paste(
+  c("", branches),
+  armedForcesHeaders[3,],
+  sep = "."
+)
+
+names(rawArmedForces) <- headers
+
+tidyArmedForces <- rawArmedForces %>%
+  rename(Pay.Grade = `.Pay Grade`) %>%
+  dplyr::select(!contains("Total")) %>%
+  filter(Pay.Grade != "Total Enlisted" &
+         Pay.Grade != "Total Warrant Officers" &
+         Pay.Grade != "Total Officers" &
+         Pay.Grade != "Total" ) %>%
+  pivot_longer(
+    cols = !Pay.Grade,
+    names_to = "Branch.Sex",
+    values_to = "Frequency"
+  ) %>%
+  separate_wider_delim(
+    cols = Branch.Sex,
+    delim = ".",
+    names = c("Branch", "Sex")
+  ) %>%
+  mutate(
+    Frequency = na_if(Frequency, y = "N/A*"),
+    Frequency = parse_number(Frequency)
+  )
+
+# Merge the two data frames ----
+forcesRanks <- left_join(
+  x = tidyArmedForces,
+  y = tidyRanks,
+  by = join_by(Pay.Grade == `Pay Grade`, Branch == Branch)
+)
+
+individualRanks <- forcesRanks %>%
+  filter(!is.na(Frequency)) %>%
+  uncount(
+    weights = Frequency
+  )
+
+individualRanks
+
+# Making two-way frequency table
+armyEnlisted <- individualRanks %>%
+  filter(
+    Branch == "Army",
+    str_detect(Pay.Grade, "^E")
+  ) %>%
+  count(Sex, Rank) %>%
+  pivot_wider(
+    names_from = Sex,
+    values_from = n,
+    values_fill = 0
+  )
+
+armyEnlisted
+```
+
+# Popularity of Baby Names
+
+```{r}
+#| label: Popularity of Baby Names
+#| fig-cap: "Popularity of Baby Names"
+#| fig-pos: "H"
+#| fig-width: 5
+
+# Load BabyNames data
+data(BabyNames)
+
+# Filter BabyNames data into chosen sub-set of names (regardless of sex)
+set.seed(7543)
+fiveNames <- BabyNames %>% sample_n(5, replace = FALSE)
+newNames <- BabyNames %>%
+  filter(name == fiveNames[1, 1] |
+           name == fiveNames[2, 1] |
+           name == fiveNames[3, 1] |
+           name == fiveNames[4, 1] |
+           name == fiveNames[5, 1])
+
+# Create a times series plot for chosen sub-set
+g <- ggplot(data = newNames, aes(x = year, y = count, group = name, color = name)) +
+  geom_line()
+g
+```
+
+# Plotting a Mathematical Function
+
+```{r}
+#| label: Plotting a Mathematical Function
+```
+
+# Reflection
+
+```{r}
+#| label: What I've Learned
+```
+
